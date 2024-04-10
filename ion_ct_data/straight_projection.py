@@ -159,6 +159,7 @@ class Projector:
         self.angles = angles
         self.slice_shape = slice_shape
         self.system_matrices = self.calculate_system_matrix()
+        self._system_matrices_tensor = None
         self.voxel_size = voxel_size
 
     def calculate_system_matrix(self):
@@ -189,6 +190,40 @@ class Projector:
             system_matrices_angles[theta] = system_matrix
 
         return system_matrices_angles
+
+    def system_matrices_to_tensor(self, normalize=False):
+        """
+        Converts the system matrices to sparse tensors.
+        """
+        if normalize:
+            system_matrices = {angle: self.normalize_system_matrix(system_matrix) for angle, system_matrix in self.system_matrices.items()}
+        else:
+            system_matrices = self.system_matrices
+
+        system_matrices_sparse = {}
+        for angle, system_matrix in system_matrices.items():
+            system_matrix = system_matrix.tocoo()
+            indices = np.vstack((system_matrix.row, system_matrix.col))
+            indices_tensor = torch.LongTensor(indices)
+            system_matrix_tensor = torch.FloatTensor(system_matrix.data)
+            system_matrices_sparse[angle] = torch.sparse.FloatTensor(indices_tensor, system_matrix_tensor,
+                                                                     torch.Size(system_matrix.shape))
+
+        return system_matrices_sparse
+
+    def stack_system_matrices_tensor(self, system_matrices_tensor):
+        """
+        Stacks the system matrices.
+        """
+        return torch.stack([system_matrices_tensor[angle] for angle in self.angles])
+
+    def save_stacked_system_matrices(self, path, normalize=False):
+        """
+        Saves the stacked system matrices to a given path.
+        """
+        system_matrices_tensor = self.system_matrices_to_tensor(normalize=normalize)
+        stacked_system_matrices = self.stack_system_matrices_tensor(system_matrices_tensor)
+        torch.save(stacked_system_matrices, path)
 
     def generate(self, patient, save_path=None, normalize=True):
         """
@@ -235,14 +270,6 @@ class Projector:
 
         return projection_angles
 
-    def save_system_matrices(self, path):
-        """
-        Saves the system matrices to a given path.
-        """
-        for angle, system_matrix in self.system_matrices.items():
-            scipy.sparse.save_npz(path + '/sysm_angle' + str(int(angle)) + '.npz', system_matrix)
-
-
     @staticmethod
     def normalize_system_matrix(system_matrix):
         """
@@ -288,3 +315,4 @@ def generate(system_matrices, ct_array, mask_array):
         projection_angles[angle] = projection_angle
 
     return projection_angles
+

@@ -38,6 +38,9 @@ def sample_data():
     angles = np.linspace(0, 180, n_angles)
 
     projector = Projector(angles=angles, slice_shape=(patients[0].slice_shape))
+    projector.save_stacked_system_matrices(os.path.join(DATA_DIR, "system_matrices_norm"), normalize=True)
+    projector.save_stacked_system_matrices(os.path.join(DATA_DIR, "system_matrices"), normalize=False)
+
 
     for patient_index, patient in enumerate(patients):
         print(f"Processing patient {patient_index + 1} of {len(patients)}")
