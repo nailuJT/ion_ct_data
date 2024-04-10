@@ -2,8 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 from warnings import warn
-from augmentation.deformation_sampling import GaussianParameterSampler, transform_ct
-from augmentation.straight_projection import PatientCT, Projector
+from deformation_sampling import GaussianParameterSampler, transform_ct
+from straight_projection import PatientCT, Projector
 from tqdm import tqdm
 
 SLICES = 76
