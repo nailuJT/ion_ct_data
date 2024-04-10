@@ -133,10 +133,6 @@ class PatientCT:
         return self.ct.shape[1:]
 
     @property
-    def n_slices(self):
-        return self.ct.shape[0]
-
-    @property
     def ion_ct(self, hu_original=HU_ORIGINAL):
         ion_ct = np.empty_like(self.ct)
         for i in range(self.n_slices):
