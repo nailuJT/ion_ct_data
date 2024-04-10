@@ -62,6 +62,7 @@ class PatientCT:
         self.ct = self._load_ct().transpose(1, 0, 2)
         self.mask = self._load_mask().transpose(1, 0, 2)
         self.slices = self._load_slices(mode=self.mode)
+        self.n_slices = self.slices.shape[0]
         self.rsp_accurate = self._load_rsp_accurate(deviation=self.magnetic_deviation,
                                                     error=self.error,)
 
