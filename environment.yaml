@@ -1,0 +1,17 @@
+name: lpd
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.9
+  - numpy
+  - pytorch
+  - scipy
+  - matplotlib
+  - scikit-learn
+  - h5py
+  - tqdm
+  - scikit-image
+  - pip
+  - pip:
+    - medpy
