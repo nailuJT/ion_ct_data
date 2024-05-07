@@ -1,9 +1,8 @@
 
-from datapipe.archive.generate_data_straight import generate_sysm
-from datapipe.straight_projection import PatientCT, Projection
+from ion_ct_data.straight_projection import PatientCT, Projector
 import numpy as np
 
-from datapipe.helpers.plotting import plot_comparison
+from ion_ct_data.helpers.plotting import plot_comparison
 
 
 def compare_system_matrices():
