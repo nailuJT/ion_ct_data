@@ -13,15 +13,11 @@ class GaussianParameters:
     sigma_dirs: any
     rotation_dirs: any
 
+
 def gaussian3d(x, mu, sigma, epsilon=1e-8):
     """
     Computes a Gaussian function.
     """
-    #
-    # dist = np.power(x - mu[:, None, None, None], 2)
-    # dist = np.divide(dist, 2 * sigma[:, None, None, None] ** 2 + epsilon)
-    # dist = np.sum(dist, axis=0)
-    #
     dist = np.sum(((x - mu[..., None, None, None]) ** 2) /
                   (2 * sigma[..., None, None, None] ** 2 + epsilon),
                   axis=0)
@@ -29,7 +25,6 @@ def gaussian3d(x, mu, sigma, epsilon=1e-8):
     y = np.exp(-dist)
 
     return y
-
 
 
 def gaussian_derivative_3d(coordinates, alpha, mu, sigma, dimension, normalize=True, **_):
@@ -49,7 +44,6 @@ def apply_gaussian_transform3d(image, alpha_dirs, mu_dirs, sigma_dirs, rotation_
     """
     Applies a Gaussian transform to an image.
     """
-
     if not all([image.ndim == mu_dirs[i].shape[0] for i in range(len(alpha_dirs))]):
         raise ValueError("Image and all directions must have the same first dimension size.")
 
@@ -81,7 +75,6 @@ def apply_gaussian_transform3d(image, alpha_dirs, mu_dirs, sigma_dirs, rotation_
     return transformed_image, vector_field
 
 
-
 def rotate_coordinates_3d(coordinates, rotation_angles, mu):
     """
     Rotate 3D coordinates around mu by rotation_angles
@@ -99,6 +92,7 @@ def rotate_coordinates_3d(coordinates, rotation_angles, mu):
 
     return coordinates_transformed
 
+
 def gaussian2d(x, mu, sigma, alpha, epsilon=1e-8):
     """
     Computes a Gaussian function.
@@ -112,7 +106,6 @@ def gaussian2d(x, mu, sigma, alpha, epsilon=1e-8):
     return y
 
 
-
 def gaussian_derivative_2d(coordinates, alpha, mu, sigma, dimension, normalize=True, **_):
     """
     Computes the derivative of a Gaussian function in dimension 'dimension'.
@@ -124,6 +117,7 @@ def gaussian_derivative_2d(coordinates, alpha, mu, sigma, dimension, normalize=T
         shift = shift / sigma[dimension] ** 2
 
     return shift
+
 
 def transform_coordinates2d(coordinates, rotation_angle, mu_normalized):
     """
@@ -175,19 +169,3 @@ def apply_gaussian_transform2d(image, alpha_dirs, mu_dirs, sigma_dirs, rotation_
 
     return transformed_image, vector_field
 
-
-
-if __name__ == '__main__':
-    gaussian_parameters = {
-        "alpha_dirs": [50, 50],
-        "mu_dirs": np.array([[0, 0],
-                             [0, 0]]),
-        "sigma_dirs": [np.array([100, 50]),
-                       np.array([50, 100])],
-        "rotation_dirs": [0, 0],
-    }
-    #test_apply_gaussian_transform(gaussian_parameters=gaussian_parameters)
-    #compare_gaussian_transforms()
-    #test_sample_gaussian_transform()
-
-    #TODO make visualiuzation with grey underlay original
