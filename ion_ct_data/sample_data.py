@@ -52,18 +52,17 @@ def sample_data():
         # angels dict to array
         projection_angles = np.array([val for val in projection_angles.values()])
 
-        # save patient.ionct, patient.mask, angles and vector_field
-        chunk_size = 8
-        offset = 3
+        chunk_size = 5
+        offset = 8
 
         # Number of chunks
-        n_chunks = patient.n_slices // chunk_size
+        n_chunks = (patient.n_slices - offset) // chunk_size
 
         for i in range(n_chunks):
             print(f"\t\tProcessing chunk {i + 1} of {n_chunks}")
             # Get the start and end index for the current chunk
             start = i * chunk_size + offset
-            end = start + chunk_size + offset
+            end = start + chunk_size
 
             # Get the chunk data
             ionct_chunk = patient.ion_ct[start:end, :, :]
@@ -72,6 +71,12 @@ def sample_data():
             mask_chunk = patient.mask[start:end, :, :]
             projection_angles_chunk = projection_angles[:, start:end, :]
             vector_field_chunk = vector_field[start:end]
+
+            # check the shapes
+            assert ionct_chunk.shape == (chunk_size, patient.slice_shape[0], patient.slice_shape[1])
+            assert patient_ct.shape == (chunk_size, patient.slice_shape[0], patient.slice_shape[1])
+            assert transformed_ionct_chunk.shape == (chunk_size, patient.slice_shape[0], patient.slice_shape[1])
+            assert projection_angles_chunk.shape == (n_angles, chunk_size, patient.slice_shape[1])
 
             # Save the chunk data to a numpy file
             np.save(os.path.join(DATA_DIR, f"ionct_chunk_{patient.name}_{i}.npy"), ionct_chunk)
