@@ -11,21 +11,16 @@ def compare_system_matrices():
     angles = np.linspace(0, 180, n_angles, endpoint=False)
 
     patient = PatientCT(patient_name)
-    projection = Projection(patient, angles)
+    projection = Projector(patient, angles)
     system_matrices_angles = projection.system_matrices
-
-    system_matrices_angles_ines = generate_sysm(n_angles,
-                                                force_patients=[patient_name],
-                                                return_sys_angles=True)
 
     plot_index = 129
 
     for i, theta in enumerate(angles):
         #reshape system matrix to match the shape of the projections
-        system_matrix_ines = system_matrices_angles_ines[i][:,plot_index].reshape(patient.slice_shape[0], patient.slice_shape[1])
         system_matrix = system_matrices_angles[theta][:,plot_index].reshape(patient.slice_shape[0], patient.slice_shape[1])
-
-        plot_comparison(system_matrix.A, system_matrix_ines.A)
+        print(system_matrix.shape)
+        plot_comparison(system_matrix, patient.ion_ct[plot_index])
 
 
 
@@ -37,7 +32,7 @@ def compare_generate_projections():
     n_angles = 10
     angles = np.linspace(0, 180, n_angles, endpoint=False)
 
-    projections = Projection(patient, angles).generate()
+    projections = Projector(patient, angles).generate()
 
     _ , projections_ines, _ = generate_sysm(n_angles,
                                          force_patients=['male1'],
