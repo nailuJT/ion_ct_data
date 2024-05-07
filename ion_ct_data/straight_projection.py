@@ -4,9 +4,9 @@ This module contains the PatientCT class which is used to handle patient CT data
 The data should be structured in the following way:
 
 /project
-└── med2
-    └── Ines.Butz
-        └── Data
+└── ct_data
+    └── patient
+        └── raw
             └── ML
                 ├── DeepBackProj
                 │   ├── 20231006_{patient_name}_1mm3mm1mm_test_slices.npy
@@ -40,7 +40,7 @@ class PatientCT:
     Class to handle patient CT data.
     """
 
-    BASE_PATH = '/project/med2/Ines.Butz/Data/ML'
+    BASE_PATH = '/project/ct_data/patient/raw/ML'
     DEEP_BACK_PROJ_PATH = os.path.join(BASE_PATH, 'DeepBackProj')
     PRIMAL_DUAL_PATH = os.path.join(BASE_PATH, 'PrimalDual')
     REFERENCE_CTS_PATH = os.path.join(PRIMAL_DUAL_PATH, 'ReferenceCTs')
@@ -51,9 +51,8 @@ class PatientCT:
         0.2: '20'
     }
 
-    def __init__(self, patient_name, n_slice_block=1, mode='train', magnetic_deviation=0.05, error='mixed'):
+    def __init__(self, patient_name, n_slice_block=1, magnetic_deviation=0.05, error='mixed'):
 
-        self.mode = mode
         self.error = error
         self.magnetic_deviation = magnetic_deviation
         self.n_slice_block = n_slice_block
@@ -61,8 +60,7 @@ class PatientCT:
         self.name = patient_name
         self.ct = self._load_ct().transpose(1, 0, 2)
         self.mask = self._load_mask().transpose(1, 0, 2)
-        self.slices = self._load_slices(mode=self.mode)
-        self.n_slices = self.slices.shape[0]
+        self.n_slices = self.ct.shape[0]
         self.rsp_accurate = self._load_rsp_accurate(deviation=self.magnetic_deviation,
                                                     error=self.error,)
 
@@ -75,11 +73,6 @@ class PatientCT:
         mask_filename = f'20231011_analytical_{self.name}_1mm3mm1mm_mask.npy'
         mask_path = os.path.join(self.REFERENCE_CTS_PATH, mask_filename)
         return np.load(mask_path)
-
-    def _load_slices(self, mode="train", offset=1):
-        slice_filename = f'20231006_{self.name}_1mm3mm1mm_{mode}_slices.npy'
-        slices_path = os.path.join(self.DEEP_BACK_PROJ_PATH, slice_filename)
-        return np.load(slices_path) - offset
 
     def _load_rsp_accurate(self, deviation=0.05, error='mixed'):
         magn_deviation = self.MAGNETIC_DEVIATIONS[deviation]
@@ -180,7 +173,7 @@ class Projector:
                 image_zeros[row_index, :] = 1
                 image_rotated = rotate(image_zeros, theta, reshape=False, order=1)
 
-                image_row = image_rotated.reshape(np.prod(self.slice_shape), order='F')
+                image_row = image_rotated.reshape(np.prod(self.slice_shape))
                 system_matrix[:, row_index] = image_row
 
             system_matrix = scipy.sparse.csc_matrix(system_matrix)
@@ -239,7 +232,7 @@ class Projector:
             for slice, (ion_ct_block, mask_image) in enumerated_cts:
 
                 ion_ct_masked = ion_ct_block * mask_image
-                system_matrix_masked = system_matrix.multiply(mask_image.flatten('F')[:, np.newaxis])
+                system_matrix_masked = system_matrix.multiply(mask_image.flatten()[:, np.newaxis])
 
                 if normalize:
                     system_matrix_masked = self.normalize_system_matrix(system_matrix_masked)
@@ -253,7 +246,7 @@ class Projector:
                 sys_coo_tensor = torch.sparse.FloatTensor(indices_tensor, system_matrix_masked_tensor,
                                                           torch.Size(system_matrix_masked.shape))
 
-                projection_angle_slice = system_matrix_masked.transpose().dot(ion_ct_masked.flatten(order='F'))
+                projection_angle_slice = system_matrix_masked.transpose().dot(ion_ct_masked.flatten())
 
                 if save_path is not None:
                     torch.save(sys_coo_tensor,
@@ -297,7 +290,7 @@ def generate(system_matrices, ct_array, mask_array):
         for slice, (ion_ct_block, mask_image) in enumerated_cts:
 
             ion_ct_masked = ion_ct_block * mask_image
-            system_matrix_masked = system_matrix.multiply(mask_image.flatten('F')[:, np.newaxis])
+            system_matrix_masked = system_matrix.multiply(mask_image.flatten[:, np.newaxis])
 
             system_matrix_masked = system_matrix_masked.tocoo()
             indices = np.vstack((system_matrix_masked.row, system_matrix_masked.col))
@@ -305,11 +298,10 @@ def generate(system_matrices, ct_array, mask_array):
             indices_tensor = torch.LongTensor(indices)
             system_matrix_masked_tensor = torch.FloatTensor(system_matrix_masked.data)
 
-            projection_angle_slice = system_matrix_masked.transpose().dot(ion_ct_masked.flatten(order='F'))
+            projection_angle_slice = system_matrix_masked.transpose().dot(ion_ct_masked.flatten())
 
             projection_angle[slice] = projection_angle_slice
 
         projection_angles[angle] = projection_angle
 
     return projection_angles
-
