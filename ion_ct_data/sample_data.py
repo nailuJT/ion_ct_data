@@ -7,9 +7,11 @@ from straight_projection import PatientCT, Projector
 from tqdm import tqdm
 
 SLICES = 76
-DATA_DIR = "/project/med6/IONCT/julian_titze/data/raw"
+DATA_DIR = "/project/med6/IONCT/julian_titze/data/medical"
 if not os.path.exists(DATA_DIR):
-    warn(f"Folder {DATA_DIR} does not exist")
+    warn(f"Folder {DATA_DIR} does not exist creating it now")
+    os.makedirs(DATA_DIR, exist_ok=True)
+
 
 def sample_data():
 
@@ -31,16 +33,17 @@ def sample_data():
 
     samplers = [GaussianParameterSampler.from_dict(config) for config in configs]
 
-    patient_names = ["male1", "male2", "female1", "female2", "female3", "female4"]
+    patient_names = ['male1', 'female1', 'male2', 'female2', 'male3',
+                     'female3', 'male4', 'female4', 'male5', 'female5']
+
     patients = [PatientCT(name) for name in patient_names]
 
-    n_angles = 5
+    n_angles = 8
     angles = np.linspace(0, 180, n_angles)
 
     projector = Projector(angles=angles, slice_shape=(patients[0].slice_shape))
-    projector.save_stacked_system_matrices(os.path.join(DATA_DIR, "system_matrices_norm"), normalize=True)
-    projector.save_stacked_system_matrices(os.path.join(DATA_DIR, "system_matrices"), normalize=False)
-
+    projector.save_stacked_system_matrices(os.path.join(DATA_DIR, "system_matrices_norm.pt"), normalize=True)
+    projector.save_stacked_system_matrices(os.path.join(DATA_DIR, "system_matrices.pt"), normalize=False)
 
     for patient_index, patient in enumerate(patients):
         print(f"Processing patient {patient_index + 1} of {len(patients)}")
@@ -49,7 +52,6 @@ def sample_data():
             transformed_patient, vector_field = transform_ct(patient, sampler.sample(inversion="none"))
 
         projection_angles = projector.generate(transformed_patient)
-        # angels dict to array
         projection_angles = np.array([val for val in projection_angles.values()])
 
         chunk_size = 5
@@ -64,7 +66,7 @@ def sample_data():
             start = i * chunk_size + offset
             end = start + chunk_size
 
-            # Get the chunk data
+            # chunk the data
             ionct_chunk = patient.ion_ct[start:end, :, :]
             patient_ct = patient.ct[start:end, :, :]
             transformed_ionct_chunk = transformed_patient.ion_ct[start:end, :, :]
