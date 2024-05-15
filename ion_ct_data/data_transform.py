@@ -1,7 +1,5 @@
 import numpy as np
-import os
 from scipy.ndimage import map_coordinates
-import warnings
 from dataclasses import dataclass
 from scipy.spatial.transform import Rotation as R
 
@@ -97,12 +95,10 @@ def gaussian2d(x, mu, sigma, alpha, epsilon=1e-8):
     """
     Computes a Gaussian function.
     """
-
     dist = np.power(x - mu[:, None, None], 2)
     dist = np.divide(dist, 2 * sigma[:, None, None] ** 2 + epsilon)
     dist = np.sum(dist, axis=0)
     y = alpha * np.exp(-dist)
-
     return y
 
 
