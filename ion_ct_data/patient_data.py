@@ -63,7 +63,7 @@ class PatientDataLoader(AbstractDataLoader):
         ct = self.load_ct()
         return ct.shape[0]
 
-    def create_patient_data(self):
+    def create_patient_data(self) -> 'PatientCTData':
         ct = self.load_ct()
         mask = self.load_mask()
         rsp_accurate = self.load_rsp_accurate()
