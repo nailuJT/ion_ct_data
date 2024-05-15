@@ -3,6 +3,7 @@ from data_transform import GaussianParameters
 from data_transform import apply_gaussian_transform3d
 import copy
 
+
 class GaussianParameterSampler:
     def __init__(self, alpha_mean,
                  alpha_std,
@@ -67,7 +68,6 @@ class GaussianParameterSampler:
         sigma_directions = np.reshape(sigma_directions, (self.dimension, self.dimension))
         rotation_directions = np.random.normal(self.rotation_mean.flatten(), self.rotation_std, (self.dimension, self.dimension))
 
-
         return {"alpha_dirs": alpha_directions, "mu_dirs": mu_directions, "sigma_dirs": sigma_directions,
                 "rotation_dirs": rotation_directions}
 
@@ -118,7 +118,6 @@ def transform_ct(patient, gaussian_parameters, normalize=True):
     patient.mask = mask_transformed
 
     return patient, vector_field
-
 
 
 def test_sampler():
