@@ -4,9 +4,9 @@ This module contains the PatientCT class which is used to handle patient CT data
 The data should be structured in the following way:
 
 /project
-└── ct_data
-    └── patient
-        └── raw
+└── med2
+    └── IONCT
+        └── Data
             └── ML
                 ├── DeepBackProj
                 │   ├── 20231006_{patient_name}_1mm3mm1mm_test_slices.npy
@@ -40,72 +40,8 @@ class Projector:
     def __init__(self, slice_shape, angles, voxel_size=(1.0, 1.0, 1.0)):
         self.angles = angles
         self.slice_shape = slice_shape
-        self.system_matrices = self.calculate_system_matrix()
-        self._system_matrices_tensor = None
+        self.system_matrices = self._calculate_system_matrix(angles, slice_shape)
         self.voxel_size = voxel_size
-
-    def calculate_system_matrix(self):
-        """
-        Generates a system matrix for a given shape and a given set of angles.
-
-        :param shape: Shape of the image.
-        :param angles: Angles for which the system matrix should be generated.
-        :return: Dictionary of system matrices for each angle.
-        """
-
-        system_matrices_angles = {}
-
-        for i, theta in tqdm(enumerate(self.angles)):
-
-            system_matrix = np.zeros(shape=(np.prod(self.slice_shape), self.slice_shape[0]))
-
-            for row_index in range(self.slice_shape[0]):
-
-                image_zeros = np.zeros(self.slice_shape)
-                image_zeros[row_index, :] = 1
-                image_rotated = rotate(image_zeros, theta, reshape=False, order=1)
-
-                image_row = image_rotated.reshape(np.prod(self.slice_shape))
-                system_matrix[:, row_index] = image_row
-
-            system_matrix = scipy.sparse.csc_matrix(system_matrix)
-            system_matrices_angles[theta] = system_matrix
-
-        return system_matrices_angles
-
-    def system_matrices_to_tensor(self, normalize=False):
-        """
-        Converts the system matrices to sparse tensors.
-        """
-        if normalize:
-            system_matrices = {angle: self.normalize_system_matrix(system_matrix) for angle, system_matrix in self.system_matrices.items()}
-        else:
-            system_matrices = self.system_matrices
-
-        system_matrices_sparse = {}
-        for angle, system_matrix in system_matrices.items():
-            system_matrix = system_matrix.tocoo()
-            indices = np.vstack((system_matrix.row, system_matrix.col))
-            indices_tensor = torch.LongTensor(indices)
-            system_matrix_tensor = torch.FloatTensor(system_matrix.data)
-            system_matrices_sparse[angle] = torch.sparse.FloatTensor(indices_tensor, system_matrix_tensor,
-                                                                     torch.Size(system_matrix.shape))
-
-        return system_matrices_sparse
-
-    def stack_system_matrices_tensor(self, system_matrices_tensor):
-        """
-        Stacks the system matrices.
-        """
-        return torch.stack([system_matrices_tensor[angle] for angle in self.angles])
-
-    def save_stacked_system_matrices(self, path, normalize=False):
-        """
-        Saves the stacked system matrices to a given path.
-        """
-        system_matrices_tensor = self.system_matrices_to_tensor(normalize=normalize)
-        stacked_system_matrices = self.stack_system_matrices_tensor(system_matrices_tensor)
-        torch.save(stacked_system_matrices, path)
 
     def generate(self, patient, save_path=None, normalize=True):
         """
@@ -148,9 +84,78 @@ class Projector:
 
                 projection_angle[slice] = projection_angle_slice
 
+            # projection of angles we project on
             projection_angles[angle] = projection_angle
 
         return projection_angles
+
+    @staticmethod
+    def _calculate_system_matrix(angles, slice_shape):
+        """
+        Generates a system matrix for a given shape and a given set of angles.
+
+        :param shape: Shape of the image.
+        :param angles: Angles for which the system matrix should be generated.
+        :return: Dictionary of system matrices for each angle.
+        """
+
+        system_matrices_angles = {}
+
+        for i, theta in tqdm(enumerate(angles)):
+
+            system_matrix = np.zeros(shape=(np.prod(slice_shape), slice_shape[0]))
+
+            for row_index in range(slice_shape[0]):
+                image_zeros = np.zeros(slice_shape)
+                image_zeros[row_index, :] = 1
+                image_rotated = rotate(image_zeros, theta, reshape=False, order=1)
+
+                image_row = image_rotated.reshape(np.prod(slice_shape))
+                system_matrix[:, row_index] = image_row
+
+            system_matrix = scipy.sparse.csc_matrix(system_matrix)
+            system_matrices_angles[theta] = system_matrix
+
+        return system_matrices_angles
+
+    @staticmethod
+    def _system_matrices_to_tensor(system_matrices):
+        """
+        Converts the system matrices to sparse tensors.
+        """
+        system_matrices_sparse = {}
+        for angle, system_matrix in system_matrices.items():
+            system_matrix = system_matrix.tocoo()
+            indices = np.vstack((system_matrix.row, system_matrix.col))
+            indices_tensor = torch.LongTensor(indices)
+            system_matrix_tensor = torch.FloatTensor(system_matrix.data)
+            system_matrices_sparse[angle] = torch.sparse.FloatTensor(indices_tensor, system_matrix_tensor,
+                                                                     torch.Size(system_matrix.shape))
+
+        return system_matrices_sparse
+
+    @staticmethod
+    def _stack_system_matrices_tensor(system_matrices_tensor, angles):
+        """
+        Stacks the system matrices.
+        """
+        return torch.stack([system_matrices_tensor[angle] for angle in angles])
+
+    def save_stacked_system_matrices(self, path, normalize=False):
+        """
+        Saves the stacked system matrices to a given path.
+        """
+        if normalize:
+            system_matrices = self.system_matrices
+            for angle, system_matrix in system_matrices.items():
+                system_matrices[angle] = self.normalize_system_matrix(system_matrix)
+        else:
+            system_matrices = self.system_matrices
+
+        system_matrices_tensor = self._system_matrices_to_tensor(system_matrices)
+        stacked_system_matrices = self._stack_system_matrices_tensor(system_matrices_tensor, self.angles)
+        torch.save(stacked_system_matrices, path)
+        return stacked_system_matrices
 
     @staticmethod
     def normalize_system_matrix(system_matrix):
@@ -163,37 +168,3 @@ class Projector:
         system_matrix = system_matrix.multiply(1. / normalization_sum)
         return system_matrix
 
-def generate(system_matrices, ct_array, mask_array):
-    """
-    Generates the projections for a given patient and a given set of system matrices.
-    """
-
-    projection_angles = {}
-
-    n_slices = ct_array.shape[0]
-
-    for angle, system_matrix in system_matrices.items():
-
-        projection_angle = np.zeros((n_slices, ct_array.shape[1]))
-
-        enumerated_cts = enumerate(zip(ct_array,
-                                       mask_array))
-
-        for slice, (ion_ct_block, mask_image) in enumerated_cts:
-
-            ion_ct_masked = ion_ct_block * mask_image
-            system_matrix_masked = system_matrix.multiply(mask_image.flatten[:, np.newaxis])
-
-            system_matrix_masked = system_matrix_masked.tocoo()
-            indices = np.vstack((system_matrix_masked.row, system_matrix_masked.col))
-
-            indices_tensor = torch.LongTensor(indices)
-            system_matrix_masked_tensor = torch.FloatTensor(system_matrix_masked.data)
-
-            projection_angle_slice = system_matrix_masked.transpose().dot(ion_ct_masked.flatten())
-
-            projection_angle[slice] = projection_angle_slice
-
-        projection_angles[angle] = projection_angle
-
-    return projection_angles
