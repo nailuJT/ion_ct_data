@@ -5,6 +5,7 @@ from scipy.interpolate import interp1d
 
 PATIENTS = ['male1', 'female1', 'male2', 'female2', 'male3', 'female3', 'male4', 'female4', 'male5', 'female5']
 
+
 class AbstractDataLoader(ABC):
     @abstractmethod
     def load_ct(self):
